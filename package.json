@@ -1,0 +1,38 @@
+{
+  "name": "outlook-playwright-framework",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "pw:version": "playwright --version",
+    "node:version": "node -v",
+
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+
+    "test:sender": "playwright test --project=sender",
+    "test:receiver": "playwright test --project=receiver",
+
+    "test:list": "playwright test --list",
+
+    "smoke": "playwright test tests/smoke",
+
+    "e2e": "playwright test tests/e2e --project=sender",
+    "e2e:headed": "playwright test tests/e2e --project=sender --headed",
+
+    "auth:sender": "playwright test tests/setup/auth.sender.setup.spec.ts --headed --project=sender",
+    "auth:receiver": "playwright test tests/setup/auth.receiver.setup.spec.ts --headed --project=receiver",
+    "auth": "npm run auth:sender && npm run auth:receiver",
+
+    "test:e2e:move-folder": "npx playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender --headed",
+    "test:e2e:move-folder:ui": "npx playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender --ui",
+    "test:e2e:move-folder:debug": "PWDEBUG=1 npx playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender",
+
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "dotenv": "^16.4.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
