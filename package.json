@@ -8,24 +8,51 @@
 
     "test": "playwright test",
     "test:headed": "playwright test --headed",
+    "test:list": "playwright test --list",
 
     "test:sender": "playwright test --project=sender",
     "test:receiver": "playwright test --project=receiver",
-
-    "test:list": "playwright test --list",
 
     "smoke": "playwright test tests/smoke",
 
     "e2e": "playwright test tests/e2e --project=sender",
     "e2e:headed": "playwright test tests/e2e --project=sender --headed",
+    "e2e:ui": "playwright test tests/e2e --project=sender --ui",
+    "e2e:debug": "PWDEBUG=1 playwright test tests/e2e --project=sender",
 
     "auth:sender": "playwright test tests/setup/auth.sender.setup.spec.ts --headed --project=sender",
     "auth:receiver": "playwright test tests/setup/auth.receiver.setup.spec.ts --headed --project=receiver",
     "auth": "npm run auth:sender && npm run auth:receiver",
 
-    "test:e2e:move-folder": "npx playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender --headed",
-    "test:e2e:move-folder:ui": "npx playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender --ui",
-    "test:e2e:move-folder:debug": "PWDEBUG=1 npx playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender",
+    "e2e:basic": "playwright test tests/e2e/e2e.sender-receiver.spec.ts --project=sender",
+    "e2e:basic:headed": "playwright test tests/e2e/e2e.sender-receiver.spec.ts --project=sender --headed",
+    "e2e:basic:ui": "playwright test tests/e2e/e2e.sender-receiver.spec.ts --project=sender --ui",
+    "e2e:basic:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver.spec.ts --project=sender",
+
+    "e2e:reply": "playwright test tests/e2e/e2e.sender-receiver-reply.spec.ts --project=sender",
+    "e2e:reply:headed": "playwright test tests/e2e/e2e.sender-receiver-reply.spec.ts --project=sender --headed",
+    "e2e:reply:ui": "playwright test tests/e2e/e2e.sender-receiver-reply.spec.ts --project=sender --ui",
+    "e2e:reply:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-reply.spec.ts --project=sender",
+
+    "e2e:delete": "playwright test tests/e2e/e2e.sender-receiver-delete.spec.ts --project=sender",
+    "e2e:delete:headed": "playwright test tests/e2e/e2e.sender-receiver-delete.spec.ts --project=sender --headed",
+    "e2e:delete:ui": "playwright test tests/e2e/e2e.sender-receiver-delete.spec.ts --project=sender --ui",
+    "e2e:delete:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-delete.spec.ts --project=sender",
+
+    "e2e:move-folder": "playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender",
+    "e2e:move-folder:headed": "playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender --headed",
+    "e2e:move-folder:ui": "playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender --ui",
+    "e2e:move-folder:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-move-to-custom-folder.spec.ts --project=sender",
+
+    "e2e:archive": "playwright test tests/e2e/e2e.sender-receiver-archive.spec.ts --project=sender",
+    "e2e:archive:headed": "playwright test tests/e2e/e2e.sender-receiver-archive.spec.ts --project=sender --headed",
+    "e2e:archive:ui": "playwright test tests/e2e/e2e.sender-receiver-archive.spec.ts --project=sender --ui",
+    "e2e:archive:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-archive.spec.ts --project=sender",
+    
+    "e2e:search": "playwright test tests/e2e/e2e.sender-receiver-search.spec.ts --project=sender",
+    "e2e:search:headed": "playwright test tests/e2e/e2e.sender-receiver-search.spec.ts --project=sender --headed",
+    "e2e:search:ui": "playwright test tests/e2e/e2e.sender-receiver-search.spec.ts --project=sender --ui",
+    "e2e:search:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-search.spec.ts --project=sender",
 
     "report": "playwright show-report"
   },

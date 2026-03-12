@@ -8,10 +8,12 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 15_000 },
   retries: 0,
-reporter: [
-  ['list'],
-  ['html', { open: 'never' }]
-],
+  workers: 1,
+  fullyParallel: false,
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+  ],
   use: {
     baseURL: process.env.BASE_URL ?? 'https://outlook.live.com',
     trace: 'retain-on-failure',

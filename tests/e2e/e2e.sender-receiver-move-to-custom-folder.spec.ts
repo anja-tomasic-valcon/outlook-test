@@ -32,63 +32,38 @@ test('E2E: create custom folder and move message into it', async ({ browser }, t
   const customFolderName = `PW-${token}-FOLDER`;
 
   try {
-    // 1) Sender sends an email to receiver
+    // 1) Sender sends an email to receiver.
     await sender.gotoMail();
     await sender.expectAuthenticated();
     await sender.toolbar.clickNewMail();
     await sender.composer.sendMail(receiverEmail as string, subject, body);
 
-    // 1.1) PROOF: verify the message exists in Sender -> Sent Items
-    // If this fails, the whole receiver wait is pointless (message was never sent).
+    // 1.1) Prove that the message exists in Sender -> Sent Items before waiting on the receiver side.
     await sender.folders.openSentItems();
-    // DEBUG (temporary): prove whether token exists in Sent Items DOM via aria-label
-await sender.folders.openSentItems();
-
-const tokenRe = new RegExp(token, 'i');
-const byRole = senderPage.getByRole('option', { name: tokenRe });
-const count = await byRole.count();
-
-console.log(`[DEBUG] role=option name~token count: ${count}`);
-
-if (count > 0) {
-  const first = byRole.first();
-  const aria = await first.getAttribute('aria-label');
-  console.log('[DEBUG] first match aria-label:', aria);
-}
-
-// Pause so you can inspect in headed/ui
-await senderPage.waitForTimeout(10_000);
     await sender.messages.waitForMessageInFolderByText(token, 'sentitems', sender);
 
-    // 2) Receiver ensures custom folder exists
+    // 2) Receiver ensures the custom folder exists.
     await receiver.gotoMail();
     await receiver.expectAuthenticated();
     await receiver.folders.ensureCustomFolder(customFolderName);
 
-    // 3) Receiver waits for message in Inbox, opens it by token
-    // NOTE: messageList has internal retries, but we keep total runtime under test timeout.
+    // 3) Receiver waits for the message in Inbox and opens it.
     await receiver.messages.waitForMessageInFolderByText(token, 'inbox', receiver);
     await receiver.messages.openMessageByText(token);
     await receiver.messages.expectSubjectInReadingPane(subject);
 
-    // 4) Move the open message to the custom folder
+    // 4) Move the open message to the custom folder.
     await receiver.readingPane.moveOpenMessageToFolder(customFolderName);
 
-    // 5) Verify it disappears from Inbox
+    // 5) Verify the message disappears from Inbox.
     await receiver.messages.waitForMessageNotInFolderByText(token, 'inbox', receiver);
 
-    // 6) Verify it appears in the custom folder
+    // 6) Open the custom folder and open the moved message directly.
+    // The subsequent reading-pane assertion is the real proof that the correct message was moved.
     await receiver.folders.openCustomFolder(customFolderName);
-
-    await expect
-      .poll(
-        async () => receiverPage.getByText(token).first().isVisible().catch(() => false),
-        { timeout: 120_000, intervals: [2000, 3000, 5000, 8000] }
-      )
-      .toBe(true);
-
-    // Optional: open and assert body contains token
     await receiver.messages.openMessageByText(token);
+
+    // 7) Verify the message body in the reading pane.
     await receiver.messages.expectBodyInReadingPane(token);
   } finally {
     await senderContext.close().catch(() => {});

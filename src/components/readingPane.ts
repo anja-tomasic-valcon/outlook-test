@@ -1,8 +1,12 @@
 import { expect, Locator, Page } from '@playwright/test';
-import { TIMEOUTS } from '../constants/timeouts';
+import { TIMEOUTS, mutableIntervals } from '../constants/timeouts';
 
 export class ReadingPane {
   constructor(private readonly page: Page) {}
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
   replyAction(): Locator {
     return this.page
@@ -50,7 +54,8 @@ export class ReadingPane {
     });
     await send.click();
 
-    // Confirm it was actually sent: either toast appears OR editor disappears.
+    // Confirm the reply was sent by observing either a transient toast
+    // or the inline editor disappearing.
     await expect
       .poll(
         async () => {
@@ -59,9 +64,10 @@ export class ReadingPane {
             .isVisible()
             .then(v => !v)
             .catch(() => true);
+
           return toast || editorGone;
         },
-        { timeout: TIMEOUTS.UI_LONG, intervals: [500, 1000, 1500, 2000] }
+        { timeout: TIMEOUTS.UI_LONG, intervals: mutableIntervals(TIMEOUTS.POLL_INTERVALS_SHORT) }
       )
       .toBe(true);
   }
@@ -95,28 +101,105 @@ export class ReadingPane {
   }
 
   moveToButton(): Locator {
-    // Outlook command bar typically has "Move to" or "Move" button.
+    // Outlook command bar typically exposes either "Move to" or "Move".
     return this.page
       .getByRole('button', { name: /move to|move/i })
       .or(this.page.locator('[role="button"][aria-label*="move" i]'))
       .first();
   }
 
-  moveToMenuFolderItem(folderName: string): Locator {
-    const re = new RegExp(folderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  private moveSurface(): Locator {
+    // Scope move interactions to the popup/menu/dialog opened by the Move action.
+    // This avoids accidentally matching the folder tree in the left sidebar.
     return this.page
+      .locator(
+        [
+          '[role="menu"]',
+          '[role="listbox"]',
+          '[role="dialog"]',
+          '[data-app-section*="Move" i]',
+          '[aria-label*="Move" i]',
+        ].join(', ')
+      )
+      .filter({
+        has: this.page.locator('[role="menuitem"], [role="option"], [role="searchbox"], input'),
+      })
+      .last();
+  }
+
+  private async waitForMoveSurfaceToOpen(): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          const surface = this.moveSurface();
+
+          const visible = await surface.isVisible().catch(() => false);
+          if (visible) return true;
+
+          const searchVisible = await surface
+            .getByRole('searchbox')
+            .first()
+            .isVisible()
+            .catch(() => false);
+
+          if (searchVisible) return true;
+
+          const optionVisible = await surface
+            .locator('[role="menuitem"], [role="option"]')
+            .first()
+            .isVisible()
+            .catch(() => false);
+
+          return optionVisible;
+        },
+        { timeout: TIMEOUTS.UI_LONG, intervals: mutableIntervals(TIMEOUTS.POLL_INTERVALS_SHORT) }
+      )
+      .toBe(true);
+  }
+
+  moveToMenuFolderItem(folderName: string): Locator {
+    const re = new RegExp(this.escapeRegex(folderName), 'i');
+    const surface = this.moveSurface();
+
+    return surface
       .getByRole('menuitem', { name: re })
-      .or(this.page.getByRole('option', { name: re }))
-      .or(this.page.getByText(re).first());
+      .or(surface.getByRole('option', { name: re }))
+      .or(
+        surface
+          .locator('[role="menuitem"], [role="option"]')
+          .filter({ hasText: re })
+          .first()
+      )
+      .first();
   }
 
   moveToSearchBox(): Locator {
-    // Some UIs show a searchable move dialog
-    return this.page
+    const surface = this.moveSurface();
+
+    // Some Outlook variants expose a searchable move dialog.
+    return surface
       .getByRole('searchbox')
-      .or(this.page.getByRole('textbox', { name: /search/i }))
-      .or(this.page.locator('input[placeholder*="search" i]'))
+      .or(surface.getByRole('textbox', { name: /search/i }))
+      .or(surface.locator('input[placeholder*="search" i]'))
       .first();
+  }
+
+  private async waitForMoveActionToFinish(folderName: string): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          const surfaceVisible = await this.moveSurface().isVisible().catch(() => false);
+          if (!surfaceVisible) return false;
+
+          const itemStillVisible = await this.moveToMenuFolderItem(folderName)
+            .isVisible()
+            .catch(() => false);
+
+          return surfaceVisible || itemStillVisible;
+        },
+        { timeout: TIMEOUTS.UI_LONG, intervals: mutableIntervals(TIMEOUTS.POLL_INTERVALS_SHORT) }
+      )
+      .toBe(false);
   }
 
   async moveOpenMessageToFolder(folderName: string): Promise<void> {
@@ -126,24 +209,31 @@ export class ReadingPane {
     });
     await btn.click();
 
-    // Try direct menu item click first
-    const item = this.moveToMenuFolderItem(folderName);
-    if (await item.isVisible().catch(() => false)) {
-      await item.click();
+    await this.waitForMoveSurfaceToOpen();
+
+    // Prefer selecting the folder directly if it is already visible in the move surface.
+    const directItem = this.moveToMenuFolderItem(folderName);
+    if (await directItem.isVisible().catch(() => false)) {
+      await directItem.click();
+      await this.waitForMoveActionToFinish(folderName);
       return;
     }
 
-    // Fallback: searchable move dialog (type folder and select)
+    // Fallback for searchable move dialogs.
     const search = this.moveToSearchBox();
     await expect(search, 'Expected move-to search input to be visible').toBeVisible({
       timeout: TIMEOUTS.UI_LONG,
     });
+
+    await search.click();
     await search.fill(folderName);
 
     const itemAfterSearch = this.moveToMenuFolderItem(folderName);
     await expect(itemAfterSearch, `Expected folder option to appear: "${folderName}"`).toBeVisible({
       timeout: TIMEOUTS.UI_LONG,
     });
+
     await itemAfterSearch.click();
+    await this.waitForMoveActionToFinish(folderName);
   }
 }

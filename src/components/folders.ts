@@ -65,6 +65,7 @@ export class Folders {
     await expect(fallback, 'Expected mailbox header (fallback) to be visible').toBeVisible({
       timeout: TIMEOUTS.UI_LONG,
     });
+
     return fallback;
   }
 
@@ -152,7 +153,9 @@ export class Folders {
     await expect(loc, `Folder not found to click: "${key}"`).toBeVisible({
       timeout: TIMEOUTS.UI_LONG,
     });
+
     await loc.click();
+    await this.expectSelected(key);
   }
 
   async expectSelected(key: FolderKey): Promise<void> {
@@ -193,6 +196,22 @@ export class Folders {
       .first();
   }
 
+  private async selectedCustomFolderTreeItem(folderName: string): Promise<Locator> {
+    const group = await this.mailboxGroup();
+
+    const byDataAttr = group
+      .locator(`[role="treeitem"][data-folder-name="${folderName}"][aria-selected="true"]`)
+      .first();
+
+    if (await byDataAttr.isVisible().catch(() => false)) return byDataAttr;
+
+    const nameRe = new RegExp(this.escapeRegex(folderName), 'i');
+    return group
+      .locator('[role="treeitem"][aria-selected="true"]')
+      .filter({ hasText: nameRe })
+      .first();
+  }
+
   /**
    * Wait until the custom folder appears in the mailbox tree.
    */
@@ -216,14 +235,11 @@ export class Folders {
   }
 
   /**
-   * IMPORTANT FIX:
-   * Folder name input MUST be scoped to the mailbox group so we never type into the global Search box.
+   * Folder name input must be scoped to the mailbox group so we never type into the global Search box.
    */
   private async folderNameInput(): Promise<Locator> {
     const group = await this.mailboxGroup();
 
-    // Look for inline folder-name textbox inside the folder tree group.
-    // This avoids matching the global header Search input.
     const scoped = group.locator(
       'input[aria-label*="folder" i], input[placeholder*="folder" i], input[type="text"], input'
     ).first();
@@ -235,75 +251,76 @@ export class Folders {
     return scoped;
   }
 
-  private async openMailboxHeaderOverflowMenu(): Promise<void> {
+  private async tryOpenMailboxHeaderOverflowMenu(): Promise<boolean> {
     const header = await this.mailboxHeader();
 
     await expect(header, 'Expected mailbox header to be visible').toBeVisible({
       timeout: TIMEOUTS.UI_LONG,
     });
 
-    // Required by your UI: hover to reveal the "..." button
+    // Hover is required in this Outlook variant to reveal the overflow button.
     await header.hover();
 
     const overflowButton = header
       .locator('button[aria-label*="more" i], button[title*="more" i], button[aria-label="More options"], button[aria-label="More actions"]')
       .first();
 
+    if (await overflowButton.isVisible().catch(() => false)) {
+      await overflowButton.click();
+      return true;
+    }
+
     const overflowFallback = this.page
       .locator('[role="treeitem"][id^="primaryMailboxRoot_"] button[aria-label*="more" i]')
       .first();
 
-    if (await overflowButton.isVisible().catch(() => false)) {
-      await overflowButton.click();
-      return;
+    if (await overflowFallback.isVisible().catch(() => false)) {
+      await overflowFallback.click();
+      return true;
     }
 
-    await expect(overflowFallback, 'Expected mailbox overflow ("...") button to be visible').toBeVisible({
-      timeout: TIMEOUTS.UI_LONG,
-    });
-    await overflowFallback.click();
+    return false;
   }
 
   /**
    * Creates a custom folder if it does not already exist.
-   * Matches your UI: hover mailbox header -> click "..." -> "Create new folder".
+   * Matches the observed UI: hover mailbox header -> click "..." -> "Create new folder".
    */
   async ensureCustomFolder(folderName: string): Promise<void> {
     const existing = await this.customFolderTreeItem(folderName);
     if (await existing.isVisible().catch(() => false)) return;
 
-    // Primary path: hover header -> overflow -> "Create new folder"
-    try {
-      await this.openMailboxHeaderOverflowMenu();
+    const openedOverflow = await this.tryOpenMailboxHeaderOverflowMenu();
 
-      const item = this.createFolderMenuItem();
-      await expect(item, 'Expected "Create new folder" menu item to be visible').toBeVisible({
-        timeout: TIMEOUTS.UI_LONG,
-      });
-      await item.click();
-    } catch {
-      // Fallback: context-menu (right click) on mailbox header
+    if (!openedOverflow) {
+      // Fallback to mailbox-header context menu if the overflow path is not available.
       const header = await this.mailboxHeader();
       await header.click({ button: 'right' });
-
-      const item = this.createFolderMenuItem();
-      await expect(item, 'Expected "Create new folder" menu item (fallback) to be visible').toBeVisible({
-        timeout: TIMEOUTS.UI_LONG,
-      });
-      await item.click();
     }
 
-    // After clicking "Create new folder", Outlook should show an inline textbox in the folder tree.
+    const item = this.createFolderMenuItem();
+    await expect(item, 'Expected "Create new folder" menu item to be visible').toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    await item.click();
+
     const input = await this.folderNameInput();
 
-    // Use type instead of fill to mimic the inline-rename behavior more reliably.
+    // Typing is more reliable than fill for Outlook inline-rename inputs.
     await input.click();
     await input.press('Control+A').catch(() => {});
-    await input.press('Meta+A').catch(() => {}); // macOS
+    await input.press('Meta+A').catch(() => {});
     await input.type(folderName, { delay: 20 });
     await input.press('Enter');
 
     await this.waitForCustomFolderToAppear(folderName);
+  }
+
+  async expectCustomFolderSelected(folderName: string): Promise<void> {
+    const item = await this.selectedCustomFolderTreeItem(folderName);
+    await expect(item, `Expected custom folder to be selected: "${folderName}"`).toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
   }
 
   async openCustomFolder(folderName: string): Promise<void> {
@@ -311,6 +328,8 @@ export class Folders {
     await expect(item, `Expected custom folder to be visible: "${folderName}"`).toBeVisible({
       timeout: TIMEOUTS.UI_LONG,
     });
+
     await item.click();
+    await this.expectCustomFolderSelected(folderName);
   }
 }
