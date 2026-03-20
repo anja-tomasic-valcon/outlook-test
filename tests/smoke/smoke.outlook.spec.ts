@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { OutlookPage } from '../../src/pages/outlookPage';
+import { TIMEOUTS } from '../../src/constants/timeouts';
 
 function requireEnv(name: 'SENDER_EMAIL' | 'RECEIVER_EMAIL'): string {
   const value = process.env[name];
@@ -61,6 +62,42 @@ test.describe('SMOKE: outlook core UI', () => {
     await test.step('Open composer', async () => {
       await outlook.toolbar.clickNewMail();
       await outlook.composer.expectReady();
+    });
+  });
+
+  test('Can open Calendar New event form', async ({ page }, testInfo) => {
+    const outlook = new OutlookPage(page, mailboxLabelFromProject(testInfo.project.name));
+
+    await test.step('Open Calendar work week view', async () => {
+      await outlook.calendar.openWorkWeekView();
+    });
+
+    await test.step('Open New event and verify form', async () => {
+      const pageRef = page;
+
+      // Click visible New event button
+      const newEventBtn = pageRef.getByRole('button', { name: /new event/i }).first();
+      await expect(newEventBtn, 'Expected New event button to be visible').toBeVisible({ timeout: TIMEOUTS.UI_LONG });
+      await newEventBtn.click();
+
+      // If split-menu opened, select Event
+      const menuItem = pageRef.getByRole('menuitem', { name: /event/i }).first();
+      if ((await menuItem.count()) && (await menuItem.isVisible().catch(() => false))) {
+        await menuItem.click();
+      } else {
+        const eventBtn = pageRef.getByRole('button', { name: /event/i }).first();
+        if ((await eventBtn.count()) && (await eventBtn.isVisible().catch(() => false))) {
+          await eventBtn.click();
+        }
+      }
+
+      // Verify Save button visible as a readiness signal
+      const save = pageRef.getByRole('button', { name: /^save$/i }).first();
+      await expect(save, 'Expected Save button in New event form').toBeVisible({ timeout: TIMEOUTS.UI_LONG });
+
+      // Verify title input (placeholder="Add title") is visible
+      const titleInput = pageRef.locator('input[placeholder="Add title"]').first();
+      await expect(titleInput, 'Expected Add title input in New event form').toBeVisible({ timeout: TIMEOUTS.UI_LONG });
     });
   });
 });

@@ -54,6 +54,22 @@
     "e2e:search:ui": "playwright test tests/e2e/e2e.sender-receiver-search.spec.ts --project=sender --ui",
     "e2e:search:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-search.spec.ts --project=sender",
 
+    "e2e:flag": "playwright test tests/e2e/e2e.sender-receiver-flag.spec.ts --project=sender",
+    "e2e:flag:headed": "playwright test tests/e2e/e2e.sender-receiver-flag.spec.ts --project=sender --headed",
+    "e2e:flag:ui": "playwright test tests/e2e/e2e.sender-receiver-flag.spec.ts --project=sender --ui",
+    "e2e:flag:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-flag.spec.ts --project=sender",
+
+    "other:open-calendar": "playwright test tests/other/open-calendar-new-event.spec.ts --project=sender",
+    "other:open-calendar:headed": "playwright test tests/other/open-calendar-new-event.spec.ts --project=sender --headed",
+    "other:open-calendar:ui": "playwright test tests/other/open-calendar-new-event.spec.ts --project=sender --ui",
+    "other:open-calendar:debug": "PWDEBUG=1 playwright test tests/other/open-calendar-new-event.spec.ts --project=sender",
+
+    "e2e:create-calendar-event-simple": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender",
+    "e2e:create-calendar-event-simple:headed": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --headed",
+    "e2e:create-calendar-event-simple:ui": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --ui",
+    "e2e:create-calendar-simple:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender",
+
+
     "report": "playwright show-report"
   },
   "devDependencies": {

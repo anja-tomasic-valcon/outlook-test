@@ -182,6 +182,7 @@ export class MessageList {
     const byDataConvid = this.page.locator('[data-convid]').filter({ hasText: textRe }).first();
     const byTextFallback = this.page.locator('[role="option"], [role="row"]').filter({ hasText: textRe }).first();
 
+
     return byOptionName.or(byRowName).or(byAriaOption).or(byAriaRow).or(byDataConvid).or(byTextFallback).first();
   }
 
@@ -196,6 +197,7 @@ export class MessageList {
 
     return combined.first();
   }
+
 
   // -----------------------------
   // Public API

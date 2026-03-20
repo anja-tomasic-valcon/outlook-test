@@ -6,6 +6,7 @@ import { Composer } from '../components/composer';
 import { MessageList } from '../components/messageList';
 import { ReadingPane } from '../components/readingPane';
 import { SearchPanel } from '../components/searchPanel';
+import { Calendar } from '../components/calendar.ts';
 
 /**
  * OutlookPage composes page objects for the Outlook web app.
@@ -23,6 +24,7 @@ export class OutlookPage {
   readonly messages: MessageList;
   readonly readingPane: ReadingPane;
   readonly search: SearchPanel;
+  readonly calendar: Calendar;
   readonly mailPath: string;
 
   constructor(page: Page, mailboxLabel: string, mailPath: string = '/mail/') {
@@ -37,6 +39,7 @@ export class OutlookPage {
     this.messages = new MessageList(page);
     this.readingPane = new ReadingPane(page);
     this.search = new SearchPanel(page);
+    this.calendar = new Calendar(page);
   }
 
   async gotoMail(): Promise<void> {
