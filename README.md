@@ -1,376 +1,273 @@
-# OUTLOOK-PLAYWRIGHT-FRAMEWORK
+# outlook-playwright-framework
 
-A Playwright + TypeScript automation framework for Outlook Web (mail & calendar) flows. This repository contains end-to-end tests (sender/receiver projects), page/component helpers, and smoke/auth setup specs to exercise Outlook mail and calendar features (create events, invite attendees, flag mail, search, etc.).
+Playwright + TypeScript end-to-end test framework for Outlook Web (mail and calendar).
 
----
-
-# Outlook Playwright Framework
-
-Playwright + TypeScript automation framework for Outlook Web.
-
-This project automates Outlook mail and calendar flows using authenticated sender/receiver accounts, with support for smoke tests, auth setup flows, and end-to-end scenarios.
+Tests run against real Outlook web sessions using pre-authenticated browser storage state.
+There is no mock layer — every test exercises actual Outlook UI behaviour.
 
 ---
 
-## Overview
+## Project structure
 
-This framework is built for testing Outlook Web features through real UI flows.
+```
+src/
+  components/
+    calendar.ts         Calendar event compose/save helpers
+    composer.ts         Mail compose helpers (To, Subject, Body, Attach, Send)
+    folders.ts          Folder navigation (Inbox, Drafts, Sent Items, etc.)
+    messageList.ts      Message list interactions (open, wait, context menu, read/unread)
+    readingPane.ts      Reading pane actions (reply, forward, move, delete, archive)
+    searchPanel.ts      Search bar interactions
+    toolbar.ts          Top toolbar (New mail)
+  constants/
+    timeouts.ts         Centralised timeout and polling interval values
+  pages/
+    outlookPage.ts      Composed page object (wraps all components)
+  utils/
+    calendarUtils.ts    Date/time formatting helpers for calendar inputs
+    testData.ts         Token and subject generation for unique test data
 
-It currently covers scenarios such as:
+tests/
+  assets/
+    test-attachment.txt Static file used by the attachment E2E test
+  e2e/
+    e2e.create-calendar-event-simple.spec.ts
+    e2e.sender-bad-recipient.spec.ts
+    e2e.sender-receiver-archive.spec.ts
+    e2e.sender-receiver-attachment.spec.ts
+    e2e.sender-receiver-delete.spec.ts
+    e2e.sender-receiver-draft.spec.ts
+    e2e.sender-receiver-flag.spec.ts
+    e2e.sender-receiver-forward.spec.ts
+    e2e.sender-receiver-mark-read-unread.spec.ts
+    e2e.sender-receiver-move-to-custom-folder.spec.ts
+    e2e.sender-receiver-reply.spec.ts
+    e2e.sender-receiver-search.spec.ts
+    e2e.sender-receiver.spec.ts
+  fixtures/
+    outlook.fixture.ts  Shared sender/receiver context fixture
+  setup/
+    auth.sender.setup.spec.ts
+    auth.receiver.setup.spec.ts
+  smoke/
+    smoke.outlook.spec.ts
 
-- sender → receiver mail flows
-- reply, delete, archive, search, move to custom folder
-- flagging messages
-- opening the New Event calendar form
-- creating calendar events
-- recurring calendar event scenarios
-- attendee / invite calendar flows
-- smoke validation of core Outlook functionality
-
-The project uses separate authenticated Playwright projects for `sender` and `receiver`, each with its own `storageState`.
+storage/               (git-ignored) Authenticated browser storage state files
+  sender.storageState.json
+  receiver.storageState.json
+```
 
 ---
-
-## Tech Stack
-
-- Playwright Test
-- TypeScript
-- Node.js
-- dotenv
-
----
-
-## Project Structure
-
-OUTLOOK-PLAYWRIGHT-FRAMEWORK
-├── src
-│   ├── components
-│   │   ├── calendar.ts
-│   │   ├── composer.ts
-│   │   ├── folders.ts
-│   │   ├── messageList.ts
-│   │   ├── readingPane.ts
-│   │   ├── searchPanel.ts
-│   │   └── toolbar.ts
-│   ├── constants
-│   │   ├── app.constants.ts
-│   │   └── timeouts.ts
-│   ├── pages
-│   │   ├── login.page.ts
-│   │   └── outlookPage.ts
-│   └── utils
-│       ├── calendarUtils.ts
-│       └── testData.ts
-├── storage
-│   ├── receiver.storageState.json
-│   └── sender.storageState.json
-├── tests
-│   ├── e2e
-│   ├── other
-│   ├── setup
-│   └── smoke
-├── playwright-report
-├── test-results
-├── .env
-├── .env.example
-├── package.json
-├── playwright.config.ts
-└── README.md
-
---- 
 
 ## Prerequisites
 
-- Node.js >= 16 (verify with `node -v`)
-- npm (or yarn)
-- Playwright browsers installed (see installation steps below)
-- Valid Outlook accounts for sender and receiver (used to create storageState files)
-- Authenticated storage state files for both users
+- Node.js 18+
+- Two Outlook web accounts (sender and receiver)
+- Chromium (installed via Playwright)
 
 ---
 
-## Installation
+## Setup
 
-1. Clone the repository and install dependencies:
+### 1. Install dependencies
 
 ```bash
-git clone <repo-url>
-cd outlook-playwright-framework
 npm install
-# then install Playwright browsers if not already present
-npx playwright install
+npx playwright install chromium
 ```
 
-(If your project already includes Playwright browsers, the install step is optional.)
+### 2. Configure environment variables
 
----
+Copy `.env.example` to `.env` and fill in the values:
 
-## Required environment variables
-
-- `SENDER_EMAIL` — email address of the sender account used by `sender` project tests.
-- `RECEIVER_EMAIL` — email address of the receiver account used by `receiver` project tests.
-
-You can export these in your shell, or use your CI secret store. Example (Windows PowerShell):
-
-```powershell
-$env:SENDER_EMAIL = 'sender@example.com'
-$env:RECEIVER_EMAIL = 'receiver@example.com'
+```
+SENDER_EMAIL=your-sender@outlook.com
+RECEIVER_EMAIL=your-receiver@outlook.com
+BASE_URL=https://outlook.live.com
 ```
 
-Optional: you may prefer a local `.env` file (not included) and read it in your CI/task runner. This repo uses storageState files for authentication (see next section).
+### 3. Authenticate (first time or when sessions expire)
 
----
-
-## Playwright configuration overview
-
-- `playwright.config.ts` defines projects (sender, receiver), timeouts, retries, and artifact directories.
-- Projects:
-  - `sender` — runs tests as the sender user using `storage/sender.storageState.json`
-  - `receiver` — runs tests as the receiver user using `storage/receiver.storageState.json`
-
-The config also controls artifact collection (traces, screenshots, videos) for failures.
-
----
-
-## Authentication / storageState setup
-
-This repo uses Playwright storageState JSON files to run tests with pre-authenticated sessions:
-
-- `storage/sender.storageState.json`
-- `storage/receiver.storageState.json`
-
-If those files are not present or you need to regenerate them, run the setup specs in `tests/setup/`:
-
-- `tests/setup/auth.sender.setup.spec.ts` — creates `storage/sender.storageState.json`
-- `tests/setup/auth.receiver.setup.spec.ts` — creates `storage/receiver.storageState.json`
-
-Run them with the appropriate project context, usually in headed mode to complete interactive login:
+Authentication uses Playwright's `storageState` to reuse sessions across tests.
+Run the auth setup specs once per account:
 
 ```bash
-# Example: run sender auth setup in headed mode
-npx playwright test tests/setup/auth.sender.setup.spec.ts --project=sender --headed
+npx playwright test tests/setup/auth.sender.setup.spec.ts --headed
+npx playwright test tests/setup/auth.receiver.setup.spec.ts --headed
 ```
 
-Follow the interactive login flow in the headed browser; the test should save `storage/*.json`. Keep those files safe — they contain authenticated state.
+Each setup test opens a browser, waits for manual login, and saves the session to `storage/`.
+
+If a test starts failing with authentication errors or login redirects, re-run the relevant
+auth setup spec to refresh the stored session.
 
 ---
 
-## How to run tests
+## Running tests
 
-Run the whole test suite:
+### Run all tests
 
 ```bash
 npx playwright test
 ```
 
-Run tests for a specific Playwright project (sender or receiver):
+### Run a specific spec
 
 ```bash
-# Run sender tests
-npx playwright test --project=sender
-
-# Run receiver tests
-npx playwright test --project=receiver
+npx playwright test tests/e2e/e2e.sender-receiver.spec.ts
 ```
 
-Run a single spec file:
+### Run with the HTML report
 
 ```bash
-npx playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender
-```
-
-Run a single test by name:
-
-```bash
-npx playwright test -t "E2E: create a calendar event and add attendee" --project=sender
-```
-
-Run tests in headed (visible) mode:
-
-```bash
-npx playwright test --headed --project=sender
-```
-
-Run with trace collection (useful for debugging failures):
-
-```bash
-npx playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --trace on --headed
-# After run, open trace:
-npx playwright show-trace test-results/<run-id>/trace.zip
-```
-
-Show only failing runs artifacts with Playwright reporters (HTML report):
-
-```bash
+npx playwright test --reporter=html
 npx playwright show-report
-# or open playwright-report/index.html in a browser
+```
+
+### Run headed (visible browser)
+
+```bash
+npx playwright test --headed
 ```
 
 ---
 
-## Available scripts
-### General
-npm run pw:version
-npm run node:version
+## Implemented test scenarios
 
-npm test
-npm run test:headed
-npm run test:list
+### Mail — sender/receiver flows
 
-npm run report
+| Scenario | File |
+|---|---|
+| Send and receive a basic email | `e2e.sender-receiver.spec.ts` |
+| Reply flow | `e2e.sender-receiver-reply.spec.ts` |
+| Forward flow | `e2e.sender-receiver-forward.spec.ts` |
+| Draft: save, reopen, send | `e2e.sender-receiver-draft.spec.ts` |
+| Flag / unflag message | `e2e.sender-receiver-flag.spec.ts` |
+| Mark as unread, then read | `e2e.sender-receiver-mark-read-unread.spec.ts` |
+| Archive message | `e2e.sender-receiver-archive.spec.ts` |
+| Delete message | `e2e.sender-receiver-delete.spec.ts` |
+| Move to custom folder | `e2e.sender-receiver-move-to-custom-folder.spec.ts` |
+| Send with file attachment | `e2e.sender-receiver-attachment.spec.ts` |
 
-### Run by Playwright project
-npm run test:sender
-npm run test:receiver
+### Mail — sender-only flows
 
-### Smoke tests
-npm run smoke
+| Scenario | File |
+|---|---|
+| Malformed recipient address is blocked | `e2e.sender-bad-recipient.spec.ts` |
 
-### Full E2E suite
-npm run e2e
-npm run e2e:headed
-npm run e2e:ui
-npm run e2e:debug
+### Search
 
-### Basic sender → receiver flow
-npm run e2e:basic
-npm run e2e:basic:headed
-npm run e2e:basic:ui
-npm run e2e:basic:debug
+| Scenario | File |
+|---|---|
+| Search by subject | `e2e.sender-receiver-search.spec.ts` |
+| Search by sender email | `e2e.sender-receiver-search.spec.ts` |
+| Search by receiver email (from Sent Items) | `e2e.sender-receiver-search.spec.ts` |
+| Search by unique body token | `e2e.sender-receiver-search.spec.ts` |
+| Search from Sent Items folder context | `e2e.sender-receiver-search.spec.ts` |
+| Negative search (no results for unknown token) | `e2e.sender-receiver-search.spec.ts` |
 
-### Reply flow
-npm run e2e:reply
-npm run e2e:reply:headed
-npm run e2e:reply:ui
-npm run e2e:reply:debug
+### Calendar
 
-### Delete flow
-npm run e2e:delete
-npm run e2e:delete:headed
-npm run e2e:delete:ui
-npm run e2e:delete:debug
-
-### Move to custom folder flow
-npm run e2e:move-folder
-npm run e2e:move-folder:headed
-npm run e2e:move-folder:ui
-npm run e2e:move-folder:debug
-
-### Archive flow
-npm run e2e:archive
-npm run e2e:archive:headed
-npm run e2e:archive:ui
-npm run e2e:archive:debug
-
-### Search flow
-npm run e2e:search
-npm run e2e:search:headed
-npm run e2e:search:ui
-npm run e2e:search:debug
-
-### Flag flow
-npm run e2e:flag
-npm run e2e:flag:headed
-npm run e2e:flag:ui
-npm run e2e:flag:debug
-
-### Calendar open / simple calendar event flow
-npm run other:open-calendar
-npm run other:open-calendar:headed
-npm run other:open-calendar:ui
-npm run other:open-calendar:debug
-
-npm run e2e:create-calendar-event-simple
-npm run e2e:create-calendar-event-simple:headed
-npm run e2e:create-calendar-event-simple:ui
-npm run e2e:create-calendar-event-simple:debug
-
-## Where reports, traces, screenshots, videos are stored
-
-- HTML report: `playwright-report/index.html`
-- Test results and artifacts: `test-results/` (location controlled by Playwright config)
-- Storage state files (authenticated contexts): `storage/*.storageState.json`
-- On test failure Playwright produces:
-  - traces (trace.zip)
-  - screenshots
-  - video files (if enabled)
-These artifacts are stored under test-results or the directories configured in `playwright.config.ts`.
-
-Use `npx playwright show-trace <trace.zip>` to inspect traces.
+| Scenario | File | Status |
+|---|---|---|
+| Create non-recurring event | `e2e.create-calendar-event-simple.spec.ts` | Passing |
+| Create event with attendee | `e2e.create-calendar-event-simple.spec.ts` | Passing with caveats — see limitations |
+| Create recurring event | `e2e.create-calendar-event-simple.spec.ts` | Passing with caveats — see limitations |
 
 ---
 
-## Sender / Receiver project explanation
+## Architecture notes
 
-- sender project:
-  - Runs tests using `storage/sender.storageState.json`
-  - Used to create and send events/emails
-- receiver project:
-  - Runs tests using `storage/receiver.storageState.json`
-  - Used to verify the receiver side (inbox/calendar) to ensure invites and mail arrive
+### Dual-project setup
 
-Tests that involve both accounts (sender → receiver) typically:
-1. Run an action with the `sender` project (create event, send mail).
-2. Then create a new Playwright context using the receiver storage state and check the receiver UI (calendar/inbox) for expected artifacts.
+Tests run under two Playwright projects: `sender` and `receiver`.
+Each project loads a different `storageState` file.
 
-This approach avoids live credential login for each test and keeps test flows deterministic.
+E2E mail tests use a shared fixture (`outlook.fixture.ts`) that provisions both contexts.
+Tests guard against double-execution with:
 
----
+```ts
+test.skip(testInfo.project.name !== 'sender', 'Run E2E flow only once (project: sender).');
+```
 
-## Project-specific test guidance & known UI differences
+### Unique token strategy
 
-Outlook Web UI is complex and occasionally changes. Tests in this repo already handle several flaky areas — important notes:
+Every test generates a unique token using `makeToken(prefix)` — a timestamp plus a short random suffix.
+This token appears in both subject and body, making message identification reliable even in a
+noisy shared mailbox.
 
-- People-picker (attendee input) — suggestions may appear and must be clicked to truly resolve a recipient; typing alone may not commit an attendee.
-- New event flow can be presented as an inline composer, a dialog, or a split-menu; tests use multiple fallbacks to open and detect the new-event form.
-- Recurrence UI often opens a separate panel or toggle; enabling recurrence requires verifying accessible signals (checkbox state or aria-pressed).
-- Teams toggle / All-day toggle: tests explicitly disable them before saving when not required.
-- Timezone/local time: tests set start time to the local time where the test runs, and explicitly set end time to +30 minutes to avoid off-by-date issues.
-- If Outlook UI changes, prefer robust role/label/placeholder locators over CSS classes or brittle selectors.
+### Message list locator strategy
 
----
-
-## Common debugging tips
-
-- Use headed + trace to inspect failures:
-  - `--headed --trace on` and then `npx playwright show-trace`
-- Re-run a single failing spec to isolate the issue:
-  - `npx playwright test <spec-path> --project=sender -t "<test title>" --headed --trace on`
-- Open the HTML report after a run:
-  - `npx playwright show-report` or open `playwright-report/index.html`
-- Use `test.only` to run a single test quickly while iterating locally.
-- Increase assertion/context granularity when a flaky UI element is suspected (use scoped assertions).
-- Use the `storage/*.storageState.json` files to reproduce the exact user session locally.
-- If mail delivery seems delayed, add a short poll (bounded) with a small timeout instead of a large hard wait — prefer deterministic conditions.
-- If tests break due to UI changes, inspect DOM with the browser's devtools (headed run) and update locators to role/aria/label where available.
+The Outlook message list lives under `[role="complementary"]`, not `[role="main"]`.
+The `MessageList` component uses a two-level locator strategy: scoped-first (under `messageSurface()`)
+with a global fallback (`messageRowGlobalByTextVariants()`). All interaction helpers must use
+both levels to be robust.
 
 ---
 
-## How tests ensure invites are actually sent (important)
+## Known limitations and technical debt
 
-- Attendee flow:
-  - Tests click suggestion if the people-picker suggestion box shows a matching address.
-  - Tests verify the attendee area contains a committed recipient "chip" (scoped check) before final action.
-  - If `Send` is present (meeting flow detected), the test clicks `Send` — not `Save`. This ensures Outlook sends invites to attendees rather than creating an organizer-only appointment.
-  - Tests then open the `receiver` storage context and verify the event appears in the receiver's calendar (or mail inbox), providing an end-to-end verification of invite delivery.
+### Calendar coverage — not fully hardened
+
+The calendar tests (`e2e.create-calendar-event-simple.spec.ts`) pass but have known correctness gaps:
+
+- **Attendee test**: the attendee input detection is guarded by a silent `if` — if the attendee
+  field is not found, the attendee step is silently skipped and the test still passes. No
+  chip/pill assertion confirms the attendee was accepted by the UI before saving.
+- **Recurring event test**: enables the recurrence toggle but does not verify a recurrence
+  indicator (e.g. repeat icon or label) on the saved event in the calendar grid. The coverage
+  is equivalent to the basic event test.
+- **Receiver-side invite**: after saving an event with an attendee, the receiver's inbox and
+  calendar are not checked. No invite receipt is verified.
+- **Date formatting**: the `setTomorrowSameTimeFor30Minutes` helper sets the date to today,
+  not tomorrow (the name is misleading). Calendar input formatting is locale-sensitive and
+  requires `locale: 'en-US'` in the browser context to work predictably.
+- **waitForTimeout usage**: the calendar spec uses `waitForTimeout` in several places as a
+  timing crutch. These should be replaced with condition-based waits in a future hardening pass.
+
+These gaps are known and accepted for now. The tests establish that Outlook calendar
+event creation works end-to-end. Correctness hardening is tracked in Next steps below.
+
+### Attachment verification
+
+The attachment test asserts the filename is visible inside `[role="main"]` via `expectBodyInReadingPane`.
+If Outlook renders the attachment pill outside that region, the assertion will fail.
+
+### Bad recipient scenario
+
+The test asserts the composer remains open after clicking Send with a malformed address.
+If Outlook silently discards the bad address or treats it as a display name and allows the
+send, the composer may close and the test fails. Outlook enforcement is tenant-configurable.
+
+### Session expiry
+
+Stored sessions expire. When tests fail with auth redirects, re-run the auth setup
+specs manually. There is no automatic session refresh mechanism.
+
+### Search — folder scope and date range
+
+Outlook web does not guarantee that search stays scoped to the current folder (it often
+defaults to "All Mailboxes"). Folder-scoped search and date-range filtering require the
+Outlook search scope UI, which lacks stable selectors in the current layout and is not
+covered by this suite.
 
 ---
 
-## Notes about test stability and Outlook Web differences
+## Next steps / future improvements
 
-- Outlook Web UI may behave differently across accounts, tenants, feature flags, or geographies; expect small adjustments when running against different accounts.
-- Tests prefer accessible locators (role/label/placeholder) to improve stability.
-- If you see intermittent failures:
-  - check if suggestions/people-picker didn't resolve — that often indicates the attendee commit step failed.
-  - check for lazy UI expansions (schedule editor, recurrence panel).
-  - check storageState validity (expired tokens) — re-run setup auth specs if necessary.
-
----
-
-## Future improvements / next steps
-
-- Extract commonly used attendee & calendar helpers into a small reusable helper module / POM (keeps tests DRY and easier to maintain).
-- Add inbox assertions for invites (verify mail content) in addition to calendar verification.
-- Add more robust retry/backoff for mail delivery checks (bounded and deterministic).
-- Add more smoke tests and monitoring tests to detect Outlook UI regressions early.
-
+- **Harden calendar attendee test**: add attendee chip assertion before save; verify the
+  receiver's inbox for a calendar invite email using a second browser context (same pattern
+  as the mail E2E tests)
+- **Harden recurring event test**: assert a recurrence indicator is visible on the saved
+  calendar event (icon, tooltip, or accessible label) before treating the test as valid
+  coverage
+- **Fix calendar date naming and correctness**: rename `setTomorrowSameTimeFor30Minutes`
+  to reflect actual behaviour; fix it to set tomorrow's date; replace `waitForTimeout`
+  calls with condition-based waits
+- **Receiver-side calendar invite verification**: open receiver's inbox after sender saves
+  an event with attendee; wait for and open the invite email; verify the calendar item in
+  receiver's calendar
+- **Date-range search**: Outlook's date filter UI is variant-specific; add once stable
+  selectors are identified
+- **Automatic session refresh**: add a pre-test hook that detects expired sessions and
+  prompts for re-auth before the full suite runs

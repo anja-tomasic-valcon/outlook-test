@@ -38,7 +38,14 @@ export function formatDateLike(sample: string, date: Date): string {
   const normalizedSample = sample.trim();
 
   if (!normalizedSample) {
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    // No pre-filled value to infer from. Use Intl so the format matches the
+    // browser's locale (set via Playwright's context `locale` option) rather
+    // than a hard-coded M/D/YYYY that only works for en-US.
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date);
   }
 
   const sepMatch = normalizedSample.match(/[./-]/);
@@ -95,7 +102,14 @@ export function formatTimeLike(sample: string, date: Date): string {
   const normalizedSample = sample.replace(/\u202f/g, ' ').trim();
 
   if (!normalizedSample) {
-    return formatTwelveHour(date, true, true);
+    // No pre-filled value to infer from. Use Intl so the format matches the
+    // browser's locale rather than assuming 12-hour en-US.
+    // Normalize the narrow no-break space (\u202f) that some Node.js Intl
+    // implementations emit between the time and AM/PM marker.
+    return new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date).replace(/\u202f/g, ' ');
   }
 
   const hasAmPm = /am|pm/i.test(normalizedSample);

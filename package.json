@@ -59,15 +59,35 @@
     "e2e:flag:ui": "playwright test tests/e2e/e2e.sender-receiver-flag.spec.ts --project=sender --ui",
     "e2e:flag:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-flag.spec.ts --project=sender",
 
-    "other:open-calendar": "playwright test tests/other/open-calendar-new-event.spec.ts --project=sender",
-    "other:open-calendar:headed": "playwright test tests/other/open-calendar-new-event.spec.ts --project=sender --headed",
-    "other:open-calendar:ui": "playwright test tests/other/open-calendar-new-event.spec.ts --project=sender --ui",
-    "other:open-calendar:debug": "PWDEBUG=1 playwright test tests/other/open-calendar-new-event.spec.ts --project=sender",
+    "e2e:forward": "playwright test tests/e2e/e2e.sender-receiver-forward.spec.ts --project=sender",
+    "e2e:forward:headed": "playwright test tests/e2e/e2e.sender-receiver-forward.spec.ts --project=sender --headed",
+    "e2e:forward:ui": "playwright test tests/e2e/e2e.sender-receiver-forward.spec.ts --project=sender --ui",
+    "e2e:forward:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-forward.spec.ts --project=sender",
 
-    "e2e:create-calendar-event-simple": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender",
-    "e2e:create-calendar-event-simple:headed": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --headed",
-    "e2e:create-calendar-event-simple:ui": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --ui",
-    "e2e:create-calendar-simple:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender",
+    "e2e:draft": "playwright test tests/e2e/e2e.sender-receiver-draft.spec.ts --project=sender",
+    "e2e:draft:headed": "playwright test tests/e2e/e2e.sender-receiver-draft.spec.ts --project=sender --headed",
+    "e2e:draft:ui": "playwright test tests/e2e/e2e.sender-receiver-draft.spec.ts --project=sender --ui",
+    "e2e:draft:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-draft.spec.ts --project=sender",
+
+    "e2e:mark-read-unread": "playwright test tests/e2e/e2e.sender-receiver-mark-read-unread.spec.ts --project=sender",
+    "e2e:mark-read-unread:headed": "playwright test tests/e2e/e2e.sender-receiver-mark-read-unread.spec.ts --project=sender --headed",
+    "e2e:mark-read-unread:ui": "playwright test tests/e2e/e2e.sender-receiver-mark-read-unread.spec.ts --project=sender --ui",
+    "e2e:mark-read-unread:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-mark-read-unread.spec.ts --project=sender",
+
+    "e2e:attachment": "playwright test tests/e2e/e2e.sender-receiver-attachment.spec.ts --project=sender",
+    "e2e:attachment:headed": "playwright test tests/e2e/e2e.sender-receiver-attachment.spec.ts --project=sender --headed",
+    "e2e:attachment:ui": "playwright test tests/e2e/e2e.sender-receiver-attachment.spec.ts --project=sender --ui",
+    "e2e:attachment:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-receiver-attachment.spec.ts --project=sender",
+
+    "e2e:bad-recipient": "playwright test tests/e2e/e2e.sender-bad-recipient.spec.ts --project=sender",
+    "e2e:bad-recipient:headed": "playwright test tests/e2e/e2e.sender-bad-recipient.spec.ts --project=sender --headed",
+    "e2e:bad-recipient:ui": "playwright test tests/e2e/e2e.sender-bad-recipient.spec.ts --project=sender --ui",
+    "e2e:bad-recipient:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.sender-bad-recipient.spec.ts --project=sender",
+
+    "e2e:calendar": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender",
+    "e2e:calendar:headed": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --headed",
+    "e2e:calendar:ui": "playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender --ui",
+    "e2e:calendar:debug": "PWDEBUG=1 playwright test tests/e2e/e2e.create-calendar-event-simple.spec.ts --project=sender",
 
 
     "report": "playwright show-report"

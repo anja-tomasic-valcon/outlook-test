@@ -53,11 +53,12 @@ export class MessageList {
   // -----------------------------
 
   private async nudgeScroll(): Promise<void> {
-    await this.page.mouse.move(300, 300).catch(() => {});
-    await this.page.mouse.wheel(0, 800).catch(() => {});
-    await this.page.waitForTimeout(150);
-    await this.page.mouse.wheel(0, -400).catch(() => {});
-    await this.page.waitForTimeout(150);
+    // Scroll within the virtualized list element instead of using page.mouse.wheel
+    // at hardcoded pixel coordinates. Scoped to the actual list container so we
+    // cannot accidentally interact with other page elements (toolbar, sidebar, etc.).
+    const surface = this.messageSurface();
+    await surface.evaluate((el) => el.scrollBy(0, 300)).catch(() => {});
+    await surface.evaluate((el) => el.scrollBy(0, -300)).catch(() => {});
   }
 
   private focusedTab(): Locator {
@@ -307,5 +308,61 @@ export class MessageList {
 
   async openMessageBySubject(subjectOrToken: string): Promise<void> {
     await this.openMessageByText(subjectOrToken);
+  }
+
+  /**
+   * Click a message row without waiting for the reading pane.
+   * Use this when clicking opens a compose window instead of the reading pane
+   * (e.g. draft messages).
+   */
+  async clickMessageByText(text: string): Promise<void> {
+    const row = this.messageRowByTextVariants(text).or(this.messageRowGlobalByTextVariants(text)).first();
+    await expect(row, `Expected message row to be visible before click (text: "${text}")`).toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    await row.click();
+  }
+
+  /**
+   * Ensures the message row is in a READ state before proceeding.
+   * Uses the row's aria-label as the source of truth: if it starts with "Unread",
+   * the message is unread and we mark it as read via the context menu.
+   * If it is already read, this is a no-op.
+   */
+  async ensureMessageIsRead(text: string): Promise<void> {
+    const row = this.messageRowByTextVariants(text).or(this.messageRowGlobalByTextVariants(text)).first();
+    await expect(row, `Expected message row to be visible (text: "${text}")`).toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    const label = (await row.getAttribute('aria-label').catch(() => '')) ?? '';
+    if (/unread/i.test(label)) {
+      await this.markAsReadViaContextMenu(text);
+    }
+  }
+
+  async markAsUnreadViaContextMenu(text: string): Promise<void> {
+    const row = this.messageRowByTextVariants(text).or(this.messageRowGlobalByTextVariants(text)).first();
+    await expect(row, `Expected message row to be visible (text: "${text}")`).toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    await row.click({ button: 'right' });
+    const item = this.page.getByRole('menuitem', { name: /mark as unread/i }).first();
+    await expect(item, 'Expected "Mark as unread" context menu item').toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    await item.click();
+  }
+
+  async markAsReadViaContextMenu(text: string): Promise<void> {
+    const row = this.messageRowByTextVariants(text).or(this.messageRowGlobalByTextVariants(text)).first();
+    await expect(row, `Expected message row to be visible (text: "${text}")`).toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    await row.click({ button: 'right' });
+    const item = this.page.getByRole('menuitem', { name: /mark as read/i }).first();
+    await expect(item, 'Expected "Mark as read" context menu item').toBeVisible({
+      timeout: TIMEOUTS.UI_LONG,
+    });
+    await item.click();
   }
 }

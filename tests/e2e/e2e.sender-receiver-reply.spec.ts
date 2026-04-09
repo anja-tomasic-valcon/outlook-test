@@ -1,6 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
-import path from 'path';
-import { OutlookPage } from '../../src/pages/outlookPage';
+import { test, expect } from '../fixtures/outlook.fixture';
 import { TIMEOUTS, mutableIntervals } from '../../src/constants/timeouts';
 
 function fullTimestamp(): string {
@@ -20,7 +18,7 @@ function fullTimestamp(): string {
  * - the input can be hidden behind a Search button/icon
  * This helper makes search robust for portfolio-grade E2E stability.
  */
-async function getVisibleSearchInput(page: Page) {
+async function getVisibleSearchInput(page: import('@playwright/test').Page): Promise<import('@playwright/test').Locator> {
   const searchInput = page
     .getByRole('searchbox')
     .or(page.getByRole('combobox', { name: /search/i }))
@@ -51,27 +49,9 @@ async function getVisibleSearchInput(page: Page) {
   return searchInput;
 }
 
-test('E2E: receiver replies, sender receives reply', async ({ browser }, testInfo) => {
+test('E2E: receiver replies, sender receives reply', async ({ sender, receiver, receiverEmail }, testInfo) => {
   test.skip(testInfo.project.name !== 'sender', 'Run E2E flow only once (project: sender).');
   test.setTimeout(TIMEOUTS.TEST_E2E);
-
-  const senderStatePath = path.resolve('storage/sender.storageState.json');
-  const receiverStatePath = path.resolve('storage/receiver.storageState.json');
-
-  const senderContext = await browser.newContext({ storageState: senderStatePath });
-  const receiverContext = await browser.newContext({ storageState: receiverStatePath });
-
-  const senderPage = await senderContext.newPage();
-  const receiverPage = await receiverContext.newPage();
-
-  const senderEmail = process.env.SENDER_EMAIL;
-  const receiverEmail = process.env.RECEIVER_EMAIL;
-
-  expect(senderEmail, 'SENDER_EMAIL must be set').toBeTruthy();
-  expect(receiverEmail, 'RECEIVER_EMAIL must be set').toBeTruthy();
-
-  const sender = new OutlookPage(senderPage, senderEmail as string);
-  const receiver = new OutlookPage(receiverPage, receiverEmail as string);
 
   const subject = `PW-${fullTimestamp()}`;
   const initialBody = `Initial message for ${subject}`;
@@ -80,54 +60,49 @@ test('E2E: receiver replies, sender receives reply', async ({ browser }, testInf
   const replyToken = `REPLY-${fullTimestamp()}`;
   const replyBody = `Reply message for ${subject} :: ${replyToken}`;
 
-  try {
-    // 1) Sender sends initial mail
-    await sender.gotoMail();
-    await sender.expectAuthenticated();
-    await sender.toolbar.clickNewMail();
-    await sender.composer.sendMail(receiverEmail as string, subject, initialBody);
+  // 1) Sender sends initial mail
+  await sender.gotoMail();
+  await sender.expectAuthenticated();
+  await sender.toolbar.clickNewMail();
+  await sender.composer.sendMail(receiverEmail, subject, initialBody);
 
-    // 2) Receiver waits and opens it
-    await receiver.gotoMail();
-    await receiver.expectAuthenticated();
-    await receiver.messages.waitForMessageInInbox(subject, receiver);
-    await receiver.messages.openMessageBySubject(subject);
-    await receiver.messages.expectSubjectInReadingPane(subject);
+  // 2) Receiver waits and opens it
+  await receiver.gotoMail();
+  await receiver.expectAuthenticated();
+  await receiver.messages.waitForMessageInInbox(subject, receiver);
+  await receiver.messages.openMessageBySubject(subject);
+  await receiver.messages.expectSubjectInReadingPane(subject);
 
-    // 3) Receiver replies (with token)
-    await receiver.readingPane.replyAndSend(replyBody);
+  // 3) Receiver replies (with token)
+  await receiver.readingPane.replyAndSend(replyBody);
 
-    // 4) Sender finds reply by token using Search (no dependency on "Re:")
-    await sender.gotoMail();
-    await sender.expectAuthenticated();
-    await sender.folders.openInbox();
+  // 4) Sender finds reply by token using Search (no dependency on "Re:")
+  await sender.gotoMail();
+  await sender.expectAuthenticated();
+  await sender.folders.openInbox();
 
-    const searchInput = await getVisibleSearchInput(senderPage);
+  const searchInput = await getVisibleSearchInput(sender.page);
 
-    // Clear, type token, submit
-    await searchInput.fill('');
-    await searchInput.fill(replyToken);
-    await senderPage.keyboard.press('Enter');
+  // Clear, type token, submit
+  await searchInput.fill('');
+  await searchInput.fill(replyToken);
+  await sender.page.keyboard.press('Enter');
 
-    // Wait for token to appear in results UI
-    await expect
-      .poll(
-        async () => senderPage.getByText(replyToken).first().isVisible().catch(() => false),
-        {
-          timeout: TIMEOUTS.MAIL_DELIVERY_MAX,
-          intervals: mutableIntervals(TIMEOUTS.POLL_INTERVALS_MEDIUM),
-        }
-      )
-      .toBe(true);
+  // Wait for token to appear in results UI
+  await expect
+    .poll(
+      async () => sender.page.getByText(replyToken).first().isVisible().catch(() => false),
+      {
+        timeout: TIMEOUTS.MAIL_DELIVERY_MAX,
+        intervals: mutableIntervals(TIMEOUTS.POLL_INTERVALS_MEDIUM),
+      }
+    )
+    .toBe(true);
 
-    // Open the message containing token (subject may be "Re:" or thread)
-    await senderPage.getByText(replyToken).first().click();
+  // Open the message containing token (subject may be "Re:" or thread)
+  await sender.page.getByText(replyToken).first().click();
 
-    // Assert body contains token + full reply
-    await sender.messages.expectBodyInReadingPane(replyToken);
-    await sender.messages.expectBodyInReadingPane(replyBody);
-  } finally {
-    await senderContext.close().catch(() => {});
-    await receiverContext.close().catch(() => {});
-  }
+  // Assert body contains token + full reply
+  await sender.messages.expectBodyInReadingPane(replyToken);
+  await sender.messages.expectBodyInReadingPane(replyBody);
 });

@@ -6,7 +6,7 @@ import { Composer } from '../components/composer';
 import { MessageList } from '../components/messageList';
 import { ReadingPane } from '../components/readingPane';
 import { SearchPanel } from '../components/searchPanel';
-import { Calendar } from '../components/calendar.ts';
+import { Calendar } from '../components/calendar';
 
 /**
  * OutlookPage composes page objects for the Outlook web app.
